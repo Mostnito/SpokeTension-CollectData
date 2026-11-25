@@ -1,0 +1,28 @@
+{
+  "name": "spoke-tension-collect-data",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"node --watch --env-file-if-exists=.env server/local.js\" \"vite --host 127.0.0.1\"",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "start": "node --env-file-if-exists=.env server/local.js",
+    "test": "node --test tests/*.test.js server/*.test.js"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "1.2.7",
+    "@supabase/supabase-js": "2.119.2",
+    "express": "5.3.0",
+    "jszip": "3.10.2",
+    "lucide-react": "1.79.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.3.0",
+    "concurrently": "9.2.5",
+    "vite": "8.3.8"
+  }
+}

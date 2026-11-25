@@ -1,0 +1,122 @@
+# Spoke Tension - Collect Data
+
+เว็บเก็บเสียงการสั่นของซี่ลวดจักรยานพร้อมค่าแรงตึงและข้อมูลประกอบ เพื่อเตรียมชุดข้อมูลสำหรับ Deep Learning ใช้ React, HTML, CSS และ JavaScript บน Vite, API ด้วย Node.js/Express, ฐานข้อมูลและไฟล์เสียงบน Supabase และเตรียมการตั้งค่าสำหรับ Vercel ไว้แล้ว
+
+รองรับมือถือและคอมพิวเตอร์ ใช้ฟอนต์ Mitr โทนฟ้า–น้ำเงิน มี Light/Dark Mode และภาษาอังกฤษเป็นค่าเริ่มต้น พร้อมภาษาไทยและจีนกลางอักษรตัวเต็ม (繁體中文)
+
+Production: [https://spoke-tension-collect-data.vercel.app](https://spoke-tension-collect-data.vercel.app)
+
+## เริ่มใช้งานในเครื่อง
+
+ต้องมี Node.js **22.12.0 ขึ้นไป** และ npm เปิดเทอร์มินัลในโฟลเดอร์นี้แล้วรัน:
+
+```sh
+npm install
+npm run dev
+```
+
+เปิด [http://127.0.0.1:5173](http://127.0.0.1:5173) หน้าเว็บใช้พอร์ต 5173 และส่ง `/api` ไปยัง Express ที่พอร์ต 3001 อนุญาตให้เบราว์เซอร์ใช้ไมโครโฟนเมื่อมีคำขอ สามารถอัด ฟัง และดาวน์โหลด MP3 ที่ยังไม่ได้บันทึกฐานข้อมูลได้ก่อนตั้งค่า Supabase
+
+การอัดเสียงต้องเปิดผ่าน HTTPS หรือ loopback เช่น `localhost`/`127.0.0.1` บนอุปกรณ์ที่กำลังใช้งาน หากทดสอบจากโทรศัพท์ให้ใช้ URL แบบ HTTPS; การเปิด HTTP ผ่าน IP ของคอมพิวเตอร์ในเครือข่ายอาจใช้ไมโครโฟนไม่ได้ ตามข้อกำหนดของ [getUserMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
+
+## เชื่อมต่อ Supabase
+
+1. สร้างโปรเจกต์ที่ [Supabase Dashboard](https://supabase.com/dashboard)
+2. เปิด **SQL Editor** แล้วคัดลอกเนื้อหาทั้งหมดของ [supabase/schema.sql](supabase/schema.sql) ไปรัน สคริปต์สร้างตาราง `recordings`, เปิด RLS และสร้าง Storage bucket แบบ private ชื่อ `spoke-recordings` ที่รับ `audio/mpeg` ขนาดไม่เกิน **50,000,000 ไบต์ต่อไฟล์** ดูวิธีใช้ SQL Editor ใน [เอกสารฐานข้อมูล Supabase](https://supabase.com/docs/guides/database/overview)
+3. คัดลอก [.env.example](.env.example) เป็น `.env` ในโฟลเดอร์หลัก แล้วกรอกค่าจริง:
+
+```dotenv
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVER_ONLY_KEY
+SUPABASE_STORAGE_BUCKET=spoke-recordings
+PORT=3001
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` เป็นชื่อตัวแปรที่โปรเจกต์นี้อ่าน ใช้คีย์ฝั่งเซิร์ฟเวอร์จาก Supabase (`sb_secret_...` หรือ legacy `service_role`) ตาม [เอกสาร API keys](https://supabase.com/docs/guides/getting-started/api-keys) ห้ามใช้ publishable/anon key แทน ห้ามใส่คีย์ในโค้ดหน้าเว็บหรือเติม `VITE_` นำหน้าตัวแปรลับ เพราะ [Vite จะเปิดเผยตัวแปรที่มี prefix นี้ในไฟล์หน้าเว็บ](https://vite.dev/guide/env-and-mode.html) ไฟล์ `.env` อยู่ใน `.gitignore` แล้ว
+
+4. หยุดแล้วรัน `npm run dev` ใหม่ กด **Try again** ในคู่มือตั้งค่าของหน้าเว็บ สถานะ **Connected** ต้องผ่านการตรวจฐานข้อมูลและ bucket จริง หากใช้ชื่อ bucket อื่น ต้องสร้าง private bucket นั้นให้ตรงกับ `SUPABASE_STORAGE_BUCKET` ด้วย
+
+## เก็บข้อมูล
+
+หนึ่งรายการใช้เสียงดีดซี่ลวด **หนึ่งครั้ง** กด **Start recording** ก่อนดีด แล้วกด **Stop recording** ด้วยตนเอง ฟังเสียงตรวจสอบและกรอกข้อมูลให้ครบทุกช่องก่อนกด **Save recording**:
+
+| ข้อมูล | ค่าหรือหน่วย |
+| --- | --- |
+| ผู้บันทึก | Most, Alexander, Sally, Devolia |
+| ตำแหน่งล้อ | ล้อหน้า / ล้อหลัง |
+| ความยาวซี่ลวด | mm |
+| เส้นผ่านศูนย์กลางซี่ลวด | mm |
+| แรงตึงที่วัดจากเครื่อง | kgf |
+| อุณหภูมิขณะอัด | °C กรอกเอง |
+| สภาพแวดล้อม | ห้องเงียบ / ห้องมีเสียงรบกวน |
+
+เว็บทั่วไปไม่มีช่องทางมาตรฐานสำหรับอ่านอุณหภูมิห้องจากโทรศัพท์ จึงต้องวัดแล้วกรอกเอง ไม่ใช้ค่าอุณหภูมิอากาศภายนอกแทน
+
+ไฟล์เสียงเป็น **MP3, mono, 192 kbps** โดยบันทึก sample rate จริงจาก `AudioContext` ลง metadata รองรับ **32,000 / 44,100 / 48,000 Hz** หากอุปกรณ์ใช้อัตราอื่นจะแสดงข้อผิดพลาด เวลาเริ่มอัด ระยะเวลา และคุณสมบัติไฟล์ถูกเพิ่มใน metadata อัตโนมัติ
+
+เสียงที่ยังไม่กด Save เก็บอยู่ในหน่วยความจำของหน้าเว็บเท่านั้น รีโหลดหรือปิดหน้าแล้วจะสูญหาย ไม่มีระบบเก็บร่างถาวร สามารถกด **Download MP3** เพื่อเก็บเสียงไว้ในเครื่องก่อนบันทึกฐานข้อมูลได้
+
+ตามข้อกำหนด โปรเจกต์นี้ **ไม่มีระบบล็อกอิน** ผู้ที่เข้าถึงเว็บไซต์ได้สามารถดู ส่งออก เพิ่ม และลบรายการในชุดข้อมูลร่วมกัน ชื่อผู้บันทึกใน dropdown เป็นป้ายกำกับข้อมูล ไม่ใช่การยืนยันตัวตนหรือการควบคุมสิทธิ์
+
+## ลบรายการ
+
+ในแท็บ **Dataset** กด **Delete** ที่รายการที่ต้องการ แล้วตรวจชื่อผู้บันทึก วันเวลา ตำแหน่งล้อ และค่าที่แสดงในหน้าต่างยืนยัน ก่อนกด **Delete permanently** ระบบจะลบไฟล์ MP3 และ metadata อย่างถาวร ไม่สามารถกู้คืนผ่านแอปได้
+
+ระบบลบไฟล์เสียงก่อนลบ metadata หาก Storage ล้มเหลวจะเก็บ metadata ไว้ หากลบเสียงแล้วแต่ metadata ยังลบไม่สำเร็จจะแจ้งสถานะให้ชัดเจนและให้กดลองลบอีกครั้ง การกดลองใหม่หลังการเชื่อมต่อขาดหายจะอ้างอิงรายการเดิม
+
+## ส่งออกข้อมูล
+
+เปิดแท็บ **Dataset** เพื่อกรองตามผู้บันทึก ตำแหน่งล้อ และสภาพแวดล้อม เลือกใช้ร่วมกันได้ โดยรายการต้องตรงกับทุกเงื่อนไขที่เลือก หน้าจอแสดงจำนวนที่พบเทียบกับรายการทั้งหมด และกด **Clear filters** เพื่อกลับไปดูทุกรายการ
+
+เลือก **Export** ของรายการ หรือ **Export all** เพื่อส่งออกทั้งชุด หากเลือกตัวกรอง ปุ่มจะเป็น **Export filtered** และส่งออกเฉพาะรายการที่ตรงกับตัวกรอง พร้อมแสดงจำนวนในหน้าต่างส่งออก จากนั้นเลือกรูปแบบข้อมูลประกอบ CSV/JSON และเนื้อหาที่ต้องการ:
+
+| การเลือก | ไฟล์ที่ได้รับ |
+| --- | --- |
+| รายการเดียว เฉพาะเสียง | MP3 |
+| รายการเดียว เฉพาะ metadata | CSV หรือ JSON |
+| รายการเดียว เสียงพร้อม metadata | ZIP |
+| Export all / Export filtered | ZIP ตามเนื้อหาที่เลือก แม้มีเพียงรายการเดียว |
+
+ภายใน ZIP มี `metadata.csv` หรือ `metadata.json` และไฟล์ `audio/<id>.mp3` ตามเนื้อหาที่เลือก ใช้ `id` จับคู่เสียงกับข้อมูล โดยคอลัมน์ `audio_file` ชี้ไปยังไฟล์เสียงใน ZIP ชื่อคอลัมน์และค่า enum ใน metadata คงเป็นภาษาอังกฤษเพื่อใช้วิเคราะห์ได้เหมือนกันทุกภาษาของหน้าเว็บ
+
+ลิงก์เสียงจาก Supabase มีอายุ 1 ชั่วโมง หน้าเว็บขอลิงก์ใหม่ก่อนส่งออก และรีเฟรชรายการเป็นระยะหรือเมื่อกลับมาที่หน้าเว็บ หากเล่นเสียงไม่ได้ให้กดรีเฟรชใน Dataset การสร้าง ZIP ทำในหน่วยความจำของเบราว์เซอร์ ชุดข้อมูลขนาดใหญ่อาจเกินหน่วยความจำของโทรศัพท์ ควรส่งออกบนคอมพิวเตอร์หรือแยกส่งออกเป็นรายการ
+
+## ตรวจสอบและ build
+
+```sh
+npm test
+npm run build
+```
+
+`npm test` รันการทดสอบในโปรเจกต์ ส่วน `npm run build` สร้างหน้าเว็บลง `dist` การทดสอบอัตโนมัติไม่ใช่การยืนยันไมโครโฟนจริงหรือบริการคลาวด์ของคุณ ใช้ `npm run dev` สำหรับทดสอบหน้าเว็บร่วมกับ API ในเครื่อง
+
+## เผยแพร่บน Vercel
+
+เลือกวิธีที่สะดวก โฟลเดอร์ที่ส่งมอบยังไม่ได้เชื่อม Git repository หรือ push ขึ้น GitHub
+
+**ผ่าน GitHub:** นำซอร์สเข้า repository ของคุณโดยไม่รวม `.env` แล้วสร้าง **New Project** ใน Vercel และ Import repository นั้น ตั้งค่า Framework Preset เป็น **Vite**, Build Command เป็น `npm run build` และ Output Directory เป็น `dist` ตาม [เอกสาร Vite บน Vercel](https://vercel.com/docs/frameworks/frontend/vite)
+
+ก่อน Deploy ให้เพิ่มตัวแปรต่อไปนี้ใน **Project Settings → Environment Variables** สำหรับ Production และ Preview หากจะใช้ Preview ด้วย:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_STORAGE_BUCKET` = `spoke-recordings`
+
+ไม่ต้องตั้ง `PORT` ใน production และไม่ต้องอัปโหลด `.env` ตัว API ใช้ [api/index.js](api/index.js) ส่งออก Express app; [vercel.json](vercel.json) มีค่า build, output และ rewrite `/api/*` ไว้แล้ว อ่านเพิ่มเติมที่ [Express บน Vercel](https://vercel.com/docs/frameworks/backend/express) และ [Environment Variables](https://vercel.com/docs/environment-variables) หากแก้ค่าบน Vercel หลัง deploy ต้อง deploy ใหม่เพื่อให้ deployment ใช้ค่าใหม่
+
+**ผ่าน CLI โดยไม่ใช้ GitHub:** รันจากโฟลเดอร์หลัก ล็อกอินและสร้าง/เชื่อม Vercel project แล้วเพิ่มค่าแบบโต้ตอบก่อน deploy:
+
+```sh
+npx vercel login
+npx vercel link
+npx vercel env add SUPABASE_URL --environment production
+npx vercel env add SUPABASE_SERVICE_ROLE_KEY --environment production
+npx vercel env add SUPABASE_STORAGE_BUCKET --environment production
+npx vercel --prod
+```
+
+กรอกค่าจริงเมื่อ CLI ถาม และเลือก Vite หากมีคำถามเรื่อง framework ดูคำสั่งใน [vercel link](https://vercel.com/docs/cli/link) และ [vercel env](https://vercel.com/docs/cli/env)
+
+เผยแพร่บน Vercel แล้ว และตรวจจาก production ว่าหน้าเว็บตอบ HTTP 200, `/api/status` รายงาน `connected: true`, `/api/records` โหลดรายการได้ และไฟล์ AudioWorklet โหลดได้ตามปกติ คีย์ Supabase อยู่ใน Environment Variables ฝั่งเซิร์ฟเวอร์ และ `.vercelignore` กันไฟล์ `.env` ออกจากการอัปโหลด
+
+การอัดด้วยไมโครโฟนจริงบนโทรศัพท์และการบันทึกเสียงจริงยังต้องตรวจบนอุปกรณ์ผู้ใช้งาน: เปิด URL แบบ HTTPS อนุญาตไมโครโฟน อัดหนึ่งรายการ กรอกข้อมูลครบ บันทึก แล้วตรวจ playback และ Export จาก Dataset ไม่มีการเพิ่มเสียงสังเคราะห์ลงชุดข้อมูล production ระหว่างตรวจ deployment
