@@ -1008,10 +1008,10 @@ export default function App() {
                       {saving ? (
                         <LoaderCircle size={19} className="spin" />
                       ) : (
-                        <Plus size={19} />
+                        <></>
                       )}
                       <span>{saving ? t.saving : t.saveRecord}</span>
-                      {!saving && <ArrowRight size={18} />}
+                      {!saving}
                     </button>
                     <p className="save-hint">
                       {connection !== "connected" ? (
