@@ -1173,21 +1173,7 @@ export default function App() {
             )}
           </main>
         )}
-        <footer className="app-footer">
-          <span>
-            <WheelMark size={17} />
-            {t.appName}
-            <span className="footer-divider">/</span>
-            {t.appSubtitle}
-          </span>
-          <span>
-            MP3
-            <span className="footer-dot" />
-            CSV
-            <span className="footer-dot" />
-            JSON
-          </span>
-        </footer>
+      
       </div>
       {exportRecords && (
         <ExportDialog
