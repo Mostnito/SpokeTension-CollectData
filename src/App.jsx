@@ -27,20 +27,20 @@ import CountryFlag from "./components/CountryFlag.jsx";
 import DatasetFilters from "./components/DatasetFilters.jsx";
 import DatasetRecord from "./components/DatasetRecord.jsx";
 import DeleteRecordingDialog from "./components/DeleteRecordingDialog.jsx";
+import WheelPresetDialog from "./components/WheelPresetDialog.jsx";
 import { SpokeRecorder } from "./audio/recorder.js";
 import { exportDataset, exportFilename, downloadBlob } from "./lib/export.js";
 import { request, saveRecording } from "./lib/api.js";
-import { filterRecordings } from "./lib/dataset.js";
-
-const EMPTY_FORM = {
-  recorder: "",
-  wheel_type: "",
-  spoke_length_mm: "",
-  spoke_diameter_mm: "",
-  tension_kgf: "",
-  temperature_c: "",
-  environment: "",
-};
+import { filterRecordings, sortRecordings } from "./lib/dataset.js";
+import {
+  EMPTY_RECORDING_FORM as EMPTY_FORM,
+  applyWheelPreset,
+  canSaveWheelPreset,
+  loadWheelPresets,
+  nextRecordingForm,
+  rememberWheelPreset,
+  saveWheelPresets,
+} from "./lib/presets.js";
 const EMPTY_FILTERS = { recorder: "", wheel_type: "", environment: "" };
 const LOCALES = { en: "en-GB", th: "th-TH", zh: "zh-TW" };
 const readPreference = (key, fallback) => {
@@ -347,6 +347,7 @@ export default function App() {
   const [showSetup, setShowSetup] = useState(false);
   const [records, setRecords] = useState([]);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [sortOrder, setSortOrder] = useState("newest");
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [listError, setListError] = useState(false);
   const [status, setStatus] = useState("idle");
@@ -354,7 +355,11 @@ export default function App() {
   const [elapsed, setElapsed] = useState(0);
   const [audio, setAudio] = useState(null);
   const [audioUrl, setAudioUrl] = useState("");
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [wheelPresets, setWheelPresets] = useState(() => loadWheelPresets());
+  const [form, setForm] = useState(() =>
+    applyWheelPreset(EMPTY_FORM, wheelPresets.activeWheel, wheelPresets),
+  );
+  const [showPresetDialog, setShowPresetDialog] = useState(false);
   const [errorKey, setErrorKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [pendingSave, setPendingSave] = useState(false);
@@ -372,7 +377,7 @@ export default function App() {
   const deletedRecordIds = useRef(new Set());
   const t = translations[language];
   const busyCapture = ["requesting", "recording", "encoding"].includes(status);
-  const visibleRecords = filterRecordings(records, filters);
+  const visibleRecords = sortRecordings(filterRecordings(records, filters), sortOrder);
   const hasFilters = Object.values(filters).some(Boolean);
   const clearFilters = () => setFilters(EMPTY_FILTERS);
 
@@ -471,9 +476,9 @@ export default function App() {
       (row) => !deletedRecordIds.current.has(row.id),
     );
     setRecords(current);
-    const ids = new Set(selected.map((row) => row.id));
-    const fresh = current.filter((row) => ids.has(row.id));
-    if (fresh.length !== selected.length)
+    const byId = new Map(current.map((row) => [row.id, row]));
+    const fresh = selected.map((row) => byId.get(row.id));
+    if (fresh.some((row) => !row))
       throw new Error("Recordings could not be refreshed.");
     return fresh;
   };
@@ -590,7 +595,7 @@ export default function App() {
         ...previous.filter((row) => row.id !== saved.id),
       ]);
       discard();
-      setForm(EMPTY_FORM);
+      setForm((current) => nextRecordingForm(current));
       setNotification("saveSuccess");
     } catch (err) {
       retryUpload.current = err.reservation || null;
@@ -616,8 +621,30 @@ export default function App() {
       (key) => Number(form[key]) > 0,
     ) &&
     Number(form.temperature_c) >= -273.15;
-  const update = (name, value) =>
+  const chooseWheel = (wheel) => {
+    if (saving || pendingSave || busyCapture) return;
+    setForm((current) => applyWheelPreset(current, wheel, wheelPresets));
+    const next = { ...wheelPresets, activeWheel: wheel };
+    setWheelPresets(next);
+    saveWheelPresets(next);
+  };
+  const savePreset = (draft) => {
+    if (saving || pendingSave || busyCapture || !canSaveWheelPreset(draft)) return;
+    const next = rememberWheelPreset(wheelPresets, draft);
+    setWheelPresets(next);
+    setForm((current) => applyWheelPreset(current, draft.wheel_type, next));
+    setNotification(
+      saveWheelPresets(next) ? "presetSaved" : "presetSessionOnly",
+    );
+    setShowPresetDialog(false);
+  };
+  const update = (name, value) => {
+    if (name === "wheel_type") {
+      chooseWheel(value);
+      return;
+    }
     setForm((previous) => ({ ...previous, [name]: value }));
+  };
   const stateLabel = {
     idle: t.readyToRecord,
     requesting: t.requestingMic,
@@ -634,7 +661,7 @@ export default function App() {
         value={form[name]}
         onChange={(e) => update(name, e.target.value)}
         required
-        disabled={saving || pendingSave}
+        disabled={saving || pendingSave || (name === "wheel_type" && busyCapture)}
       >
         <option value="" disabled>
           {label}
@@ -922,12 +949,23 @@ export default function App() {
                 className="metadata-column"
                 aria-labelledby="metadata-title"
               >
-                <div className="section-heading">
+                <div className="section-heading metadata-heading">
                   <span className="step-number">02</span>
                   <div>
                     <h2 id="metadata-title">{t.metadataTitle}</h2>
                     <p>{t.metadataDescription}</p>
                   </div>
+                  <button
+                    type="button"
+                    className="icon-button preset-settings-button"
+                    onClick={() => setShowPresetDialog(true)}
+                    disabled={saving || pendingSave || busyCapture}
+                    aria-label={t.editPresets}
+                    aria-haspopup="dialog"
+                    title={t.editPresets}
+                  >
+                    <Settings2 size={18} />
+                  </button>
                 </div>
                 <form
                   ref={formElement}
@@ -941,7 +979,7 @@ export default function App() {
                       {select(
                         "recorder",
                         t.selectRecorder,
-                        ["Most", "Alexander", "Sally", "Devolia"].map(
+                        ["Most", "Alexander", "Sally", "Devolia", "Anonymous"].map(
                           (name) => [name, name],
                         ),
                       )}
@@ -989,6 +1027,7 @@ export default function App() {
                     </Field>
                   </div>
                   <div className="save-area">
+                    <p className="next-recording-hint">{t.presetNextHint}</p>
                     {errorKey === "saveError" && (
                       <div className="error-message" role="alert">
                         {t[errorKey]}
@@ -1065,6 +1104,8 @@ export default function App() {
             </div>
             <DatasetFilters
               filters={filters}
+              sortOrder={sortOrder}
+              onSortChange={setSortOrder}
               onChange={(name, value) =>
                 setFilters((previous) => ({ ...previous, [name]: value }))
               }
@@ -1158,7 +1199,7 @@ export default function App() {
                   <DatasetRecord
                     key={row.id}
                     record={row}
-                    number={visibleRecords.length - index}
+                    number={sortOrder === "newest" ? visibleRecords.length - index : index + 1}
                     recordedAt={formatDate(row.recorded_at, language)}
                     t={t}
                     onExport={(record) => {
@@ -1175,6 +1216,15 @@ export default function App() {
         )}
       
       </div>
+      {showPresetDialog && (
+        <WheelPresetDialog
+          form={form}
+          presets={wheelPresets.presets}
+          t={t}
+          onClose={() => setShowPresetDialog(false)}
+          onSave={savePreset}
+        />
+      )}
       {exportRecords && (
         <ExportDialog
           records={exportRecords}

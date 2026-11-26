@@ -28,7 +28,7 @@
 }
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 0;
 }
 button,
 input,
@@ -563,6 +563,32 @@ h1 {
   column-gap: 18px;
   row-gap: 20px;
 }
+.preset-hint,
+.next-recording-hint {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.metadata-heading > div {
+  min-width: 0;
+}
+.preset-settings-button {
+  width: 44px;
+  min-height: 44px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.preset-settings-button:disabled {
+  opacity: 0.45;
+}
+.preset-hint {
+  margin-top: 8px;
+  font-size: 10px;
+}
+.next-recording-hint {
+  margin-bottom: 12px;
+}
 .field {
   min-width: 0;
 }
@@ -948,7 +974,7 @@ audio {
 }
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 .filter-grid .select-wrap,
@@ -1303,6 +1329,29 @@ audio {
   gap: 9px;
   margin-top: 24px;
 }
+.preset-dialog .fields-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin: 22px 0 16px;
+}
+.preset-dialog .field input,
+.preset-dialog .field select {
+  min-height: 48px;
+  font-size: 16px;
+}
+.preset-dialog .select-wrap > svg {
+  top: 17px;
+}
+.preset-dialog .field-label {
+  font-size: 12px;
+}
+.preset-dialog h2,
+.preset-dialog .field-label {
+  overflow-wrap: anywhere;
+}
+.preset-dialog .dialog-actions > .button {
+  min-width: 0;
+}
 .spin {
   animation: rotate 1s linear infinite;
 }
@@ -1651,6 +1700,9 @@ audio {
     gap: 16px 12px;
   }
   .filter-grid > .field:first-child {
+    grid-column: 1 / -1;
+  }
+  .filter-grid > .dataset-sort {
     grid-column: 1 / -1;
   }
   .filter-grid select {

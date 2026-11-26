@@ -2,6 +2,8 @@ import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 
 export default function DatasetFilters({
   filters,
+  sortOrder = "newest",
+  onSortChange,
   onChange,
   onClear,
   disabled,
@@ -83,6 +85,25 @@ export default function DatasetFilters({
             </div>
           </div>
         ))}
+        {onSortChange && (
+          <div className="field dataset-sort">
+            <label className="field-label" htmlFor="dataset-sort">{t.sortBy}</label>
+            <div className="select-wrap">
+              <select
+                id="dataset-sort"
+                name="dataset-sort"
+                value={sortOrder}
+                disabled={disabled}
+                onChange={(event) => onSortChange(event.target.value)}
+              >
+                <option value="newest">{t.sortNewest}</option>
+                <option value="tension-asc">{t.sortTensionAsc}</option>
+                <option value="tension-desc">{t.sortTensionDesc}</option>
+              </select>
+              <ChevronDown size={16} aria-hidden="true" />
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
